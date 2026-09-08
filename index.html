@@ -27,6 +27,17 @@
     body{margin:0;font-family:'Inter',sans-serif;color:var(--text);background:linear-gradient(135deg,#edf1f4 0%,#f8fafb 100%);overflow:hidden;}
     .hidden{display:none!important;}
 
+    .landing-screen{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(circle at top left,rgba(60,115,117,.16),transparent 34%),radial-gradient(circle at bottom right,rgba(31,55,72,.16),transparent 36%),linear-gradient(135deg,#edf1f4 0%,#f8fafb 100%);}
+    .landing-card{width:min(700px,100%);padding:56px 38px;text-align:center;background:rgba(255,255,255,.95);border:1px solid var(--border);border-radius:30px;box-shadow:0 24px 70px rgba(31,55,72,.15);}
+    .landing-eyebrow{margin-bottom:12px;color:var(--teal);font-size:.82rem;font-weight:900;letter-spacing:.24rem;text-transform:uppercase;}
+    .landing-title{margin:0 0 8px;color:var(--navy);font-size:clamp(2rem,5vw,3.2rem);font-weight:900;}
+    .landing-subtitle{margin-bottom:34px;color:var(--muted);font-weight:700;}
+    .landing-actions{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;}
+    .landing-btn{min-width:230px;padding:18px 28px;border:0;border-radius:999px;color:#fff;font-size:1rem;font-weight:900;letter-spacing:.03em;cursor:pointer;box-shadow:0 12px 28px rgba(31,55,72,.17);transition:.2s ease;}
+    .landing-btn:hover{transform:translateY(-2px);filter:brightness(.98);}
+    .btn-cs{background:linear-gradient(135deg,var(--navy),var(--navy-2));}
+    .btn-atty{background:linear-gradient(135deg,#35696b,#4b8582);}
+
     .loading-overlay{position:fixed;inset:0;z-index:9999999;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.86);backdrop-filter:blur(5px);}
 
     .app-shell{display:flex;height:100vh;overflow:hidden;}
@@ -133,11 +144,27 @@
     </div>
   </div>
 
-  <div class="app-shell" id="appShell">
+  <div class="landing-screen" id="landingScreen">
+    <div class="landing-card">
+      <div class="landing-eyebrow">Mendoza Law Firm</div>
+      <h1 class="landing-title">Agenda Case Review</h1>
+      <div class="landing-subtitle">Erick Dessus · Selecciona el módulo.</div>
+      <div class="landing-actions">
+        <button class="landing-btn btn-cs" onclick="enterMode('CS')">
+          <i class="bi bi-calendar-plus-fill me-2"></i>AGENDAR
+        </button>
+        <button class="landing-btn btn-atty" onclick="enterMode('ATTY')">
+          <i class="bi bi-person-badge-fill me-2"></i>ATTY
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell hidden" id="appShell">
     <aside class="sidebar">
       <div class="brand-title">
         <i class="bi bi-calendar2-check-fill fs-4"></i>
-        <div><div>Agenda Case Review</div><small class="text-muted fw-semibold">Erick Dessus</small></div>
+        <div><div>Agenda Case Review</div><small class="text-muted fw-semibold" id="modeSubtitle">Erick Dessus</small></div>
       </div>
 
       <div class="rule-banner">
@@ -175,8 +202,9 @@
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
           <span id="adminModePill" class="admin-mode-pill hidden"><i class="bi bi-shield-lock-fill"></i>MODO ADMIN</span>
-          <button id="adminModeButton" class="btn btn-outline-danger btn-sm fw-bold" onclick="toggleAdminMode()"><i class="bi bi-shield-lock me-1"></i>Admin</button>
+          <button id="adminModeButton" class="btn btn-outline-danger btn-sm fw-bold hidden" onclick="toggleAdminMode()"><i class="bi bi-shield-lock me-1"></i>Admin</button>
           <button class="btn btn-outline-primary btn-sm fw-bold" onclick="loadDailyAgenda(true,true)"><i class="bi bi-arrow-clockwise me-1"></i>Actualizar</button>
+          <button class="btn btn-outline-dark btn-sm fw-bold" onclick="goBackToLanding()"><i class="bi bi-box-arrow-left me-1"></i>Menú</button>
         </div>
       </div>
 
@@ -184,7 +212,7 @@
         <div class="calendar-board card-soft">
           <div class="board-top">
             <div>
-              <div class="fw-bold">CASE REVIEW · ERICK DESSUS</div>
+              <div class="fw-bold" id="boardTitle">CASE REVIEW · ERICK DESSUS</div>
               <small class="text-muted fw-semibold" id="agendaCount">0 citas</small>
             </div>
             <div class="d-flex gap-2 flex-wrap align-items-center">
@@ -385,6 +413,7 @@
     const DEFAULT_DISPLAY_START = '15:00';
     const DEFAULT_DISPLAY_END = '20:00';
     const DEFAULT_MIN_START = '15:00';
+    const CLICKUP_WORKSPACE_ID = '31633845';
 
     let selectedDate = new Date();
     let viewingMonth = selectedDate.getMonth();
@@ -402,6 +431,7 @@
     let bookingSlots = [];
     let selectedClient = null;
     let selectedOutcome = '';
+    let currentMode = '';
     let bookingModal, outcomeModal, blockModal, slotModal;
     const agendaCache = new Map();
     const CACHE_TTL_MS = 30000;
@@ -432,9 +462,38 @@
       } catch (error) {
         console.error(error);
       }
-
-      await loadDailyAgenda(true);
     });
+
+    async function enterMode(mode) {
+      currentMode = mode;
+      document.getElementById('landingScreen').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('hidden');
+
+      const isCS = mode === 'CS';
+      document.getElementById('modeSubtitle').textContent = isCS ? 'Erick Dessus · Agendar' : 'Erick Dessus · ATTY';
+      document.getElementById('boardTitle').textContent = isCS ? 'CASE REVIEW · ERICK DESSUS' : 'MIS CASE REVIEW · ERICK DESSUS';
+
+      adminMode = false;
+      adminPassword = '';
+      updateAdminModeUI();
+
+      document.querySelector('.rule-banner').classList.toggle('hidden', !isCS);
+      document.getElementById('sidebarBookButton').classList.toggle('hidden', !isCS);
+      document.getElementById('headerBookButton').classList.toggle('hidden', !isCS);
+      document.getElementById('adminModeButton').classList.toggle('hidden', !isCS);
+
+      renderDateUI();
+      await loadDailyAgenda(true);
+    }
+
+    function goBackToLanding() {
+      currentMode = '';
+      appointments = []; blocks = [];
+      adminMode = false; adminPassword = '';
+      updateAdminModeUI();
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('landingScreen').classList.remove('hidden');
+    }
 
     function jsonpRequest(body) {
       return new Promise((resolve, reject) => {
@@ -685,6 +744,7 @@
     }
 
     async function toggleAdminMode() {
+      if (currentMode !== 'CS') return;
       if (adminMode) { adminMode = false; adminPassword = ''; updateAdminModeUI(); renderTimeline(); return; }
       const result = await Swal.fire({
         title: 'Modo administrador', text: 'Ingresa la contraseña para bloquear horarios o días.',
@@ -790,7 +850,7 @@
     }
 
     async function openBookingModal() {
-      if (adminMode) return;
+      if (adminMode || currentMode !== 'CS') return;
       document.getElementById('bookingClickupId').value = '';
       document.getElementById('bookingClient').value = '';
       document.getElementById('bookingScheduledBy').value = '';
@@ -920,9 +980,18 @@
         detailBox('Quién agendó', item.scheduledBy || ''),
         detailBox('Estatus', item.status || 'PENDIENTE')
       ].join('');
-      document.getElementById('clientResourceLinks').innerHTML = item.meetLink
-        ? `<a class="resource-link" href="${escapeAttr(item.meetLink)}" target="_blank" rel="noopener noreferrer"><i class="bi bi-camera-video-fill"></i>Google Meet</a>`
-        : '<span class="resource-empty">No se agregó link de Meet para este cliente.</span>';
+
+      const links = [];
+      if (item.clickupId) {
+        links.push(`<a class="resource-link" href="${escapeAttr(clickupTaskUrl(item.clickupId))}" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i>Abrir en ClickUp</a>`);
+      }
+      if (item.meetLink) {
+        links.push(`<a class="resource-link" href="${escapeAttr(item.meetLink)}" target="_blank" rel="noopener noreferrer"><i class="bi bi-camera-video-fill"></i>Google Meet</a>`);
+      }
+      document.getElementById('clientResourceLinks').innerHTML = links.length
+        ? links.join('')
+        : '<span class="resource-empty">No hay ID de ClickUp ni link de Meet para este cliente.</span>';
+
       document.getElementById('attyNotes').value = item.attyNotes || '';
       updateOutcomeButtons();
       outcomeModal.show();
@@ -951,6 +1020,7 @@
     }
 
     function detailBox(label, value) { return `<div class="detail-box"><small>${escapeHtml(label)}</small>${escapeHtml(value || '')}</div>`; }
+    function clickupTaskUrl(clickupId) { return `https://app.clickup.com/t/${CLICKUP_WORKSPACE_ID}/${encodeURIComponent(clickupId)}`; }
 
     function cardClass(item) {
       const value = normalizedStatus(item);
