@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda Case Review · Erick Dessus</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root{
+      --bg:#edf1f4; --panel:#ffffff; --border:#d5dde3;
+      --navy:#1f3748; --navy-2:#31566b; --teal:#3c7375;
+      --text:#283842; --muted:#697781;
+      --pending:#b84d4d; --pending-soft:#fff0f0;
+      --done:#3d8660; --done-soft:#edf8f1;
+      --reschedule:#ce7622; --reschedule-soft:#fff3e2;
+      --process:#4c7f9d; --process-soft:#edf4f8;
+      --no-contact:#91536f; --no-contact-soft:#f6edf2;
+      --cancel:#737f86; --cancel-soft:#f0f2f3;
+    }
+    *{box-sizing:border-box;}
+    html,body{height:100%;}
+    body{margin:0;font-family:'Inter',sans-serif;color:var(--text);background:linear-gradient(135deg,#edf1f4 0%,#f8fafb 100%);overflow:hidden;}
+    .hidden{display:none!important;}
+
+    .loading-overlay{position:fixed;inset:0;z-index:9999999;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,.86);backdrop-filter:blur(5px);}
+
+    .app-shell{display:flex;height:100vh;overflow:hidden;}
+    .sidebar{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:16px;padding:18px;overflow-y:auto;background:rgba(255,255,255,.95);border-right:1px solid var(--border);box-shadow:10px 0 30px rgba(31,55,72,.06);}
+    .main-content{min-width:0;flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+    .brand-title{display:flex;align-items:center;gap:10px;color:var(--navy);font-weight:900;line-height:1.15;}
+    .brand-title i{color:var(--teal);}
+
+    .card-soft{background:var(--panel);border:1px solid var(--border);border-radius:20px;box-shadow:0 12px 32px rgba(31,55,72,.08);}
+
+    .rule-banner{display:flex;align-items:flex-start;gap:10px;padding:13px 15px;color:#1f4a4b;background:#e8f2f1;border:1px solid #bcd6d4;border-radius:15px;font-size:.86rem;font-weight:800;}
+
+    .header-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 18px;background:rgba(255,255,255,.95);border-bottom:1px solid var(--border);}
+    .main-scroll{flex:1;overflow:auto;padding:20px;background:rgba(255,255,255,.48);}
+
+    .mini-calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:.77rem;text-align:center;}
+    .weekday-label{padding:4px 0;color:#7b8791;font-size:.66rem;font-weight:900;text-transform:uppercase;}
+    .calendar-empty{padding:8px 0;}
+    .calendar-day{padding:8px 0;border-radius:10px;color:#374957;font-weight:800;cursor:pointer;transition:.18s;}
+    .calendar-day:hover{background:#e9eff3;}
+    .calendar-day.active{color:#fff;background:linear-gradient(135deg,var(--navy-2),var(--teal));box-shadow:0 7px 16px rgba(31,55,72,.20);}
+    .calendar-day.today:not(.active){border:1px solid var(--teal);}
+
+    .btn-primary-custom{color:#fff;border:0;font-weight:900;background:linear-gradient(135deg,var(--navy-2),var(--teal));box-shadow:0 8px 18px rgba(31,55,72,.16);}
+    .btn-primary-custom:hover{color:#fff;filter:brightness(.96);}
+
+    .calendar-board{min-width:520px;overflow:hidden;}
+    .board-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border);background:#fff;}
+    .legend-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    .legend-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:.68rem;font-weight:900;}
+    .legend-dot{width:9px;height:9px;border-radius:999px;}
+
+    .timeline-header,.timeline-grid{display:grid;grid-template-columns:96px minmax(360px,1fr);min-width:520px;}
+    .timeline-header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(31,55,72,.06);}
+    .time-header{display:flex;align-items:center;justify-content:center;min-height:72px;color:var(--muted);font-size:.76rem;font-weight:900;border-right:1px solid var(--border);background:#f5f7f8;}
+    .attorney-header{min-width:0;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 18px;text-align:center;background:linear-gradient(135deg,#f1f5f7,#fafcfc);}
+    .attorney-name{color:var(--navy);font-weight:900;font-size:1.02rem;}
+    .attorney-location{margin-top:3px;color:var(--muted);font-size:.72rem;font-weight:800;}
+
+    .timeline-scroll{overflow:auto;background:#fff;scrollbar-gutter:stable;overscroll-behavior:contain;}
+    .timeline-grid{position:relative;}
+    .time-axis{position:relative;background:#f7f9fa;border-right:1px solid var(--border);}
+    .time-label{position:absolute;left:0;right:0;z-index:2;transform:translateY(-50%);padding:0 14px 0 6px;color:#526570;background:#f7f9fa;font-size:.74rem;font-weight:900;line-height:1;text-align:right;white-space:nowrap;}
+    .time-label::after{content:"";position:absolute;right:0;top:50%;width:7px;height:1px;background:#aebbc2;}
+
+    .attorney-lane{position:relative;background-color:#fff;cursor:pointer;transition:background-color .15s ease;}
+    .attorney-lane:hover{background-color:#f9fbfc;}
+    .outside-hours{position:absolute;left:0;right:0;background:rgba(55,72,82,.045);pointer-events:none;}
+
+    .event-card{position:absolute;left:8px;right:8px;z-index:5;overflow:hidden;padding:8px 10px;border:1px solid;border-left-width:6px;border-radius:12px;cursor:pointer;box-shadow:0 7px 16px rgba(31,55,72,.12);transition:.15s ease;font-size:.76rem;}
+    .event-card:hover{z-index:10;transform:translateY(-1px);box-shadow:0 12px 24px rgba(31,55,72,.18);}
+    .event-card.pending{background:var(--pending-soft);border-color:#efc9c9;border-left-color:var(--pending);}
+    .event-card.done{background:var(--done-soft);border-color:#cae6d4;border-left-color:var(--done);}
+    .event-card.rescheduled{background:var(--reschedule-soft);border-color:#efd2af;border-left-color:var(--reschedule);}
+    .event-card.process{background:var(--process-soft);border-color:#d0e1ea;border-left-color:var(--process);}
+    .event-card.no-contact{background:var(--no-contact-soft);border-color:#e3cad6;border-left-color:var(--no-contact);}
+    .event-card.cancelled{background:var(--cancel-soft);border-color:#d7dde0;border-left-color:var(--cancel);}
+
+    .admin-mode-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #f2c7c7;border-radius:999px;background:#fff0f0;color:#8d3030;font-size:.72rem;font-weight:900;}
+
+    .blocked-card{position:absolute;left:8px;right:8px;z-index:4;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:9px 12px;border:1px solid #aeb8be;border-left:6px solid #596971;border-radius:12px;background:repeating-linear-gradient(135deg,rgba(89,105,113,.10),rgba(89,105,113,.10) 10px,rgba(255,255,255,.78) 10px,rgba(255,255,255,.78) 20px);color:#34444d;text-align:center;box-shadow:0 6px 14px rgba(31,55,72,.10);font-size:.72rem;font-weight:900;cursor:default;}
+    .blocked-card.admin-unlockable{cursor:pointer;border-left-color:#b34b4b;}
+    .blocked-card.admin-unlockable:hover{z-index:9;background:#fff1f1;}
+    .blocked-card small{display:block;margin-top:3px;color:#697781;font-size:.64rem;}
+
+    .admin-mode .attorney-lane{cursor:crosshair;}
+    .admin-mode .attorney-lane:hover{background-color:#fff9f3;}
+
+    .event-time{color:var(--navy);font-size:.68rem;font-weight:900;}
+    .event-client{margin-top:2px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .event-meta{margin-top:2px;color:var(--muted);font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    .detail-box{padding:12px;background:#f5f7f8;border:1px solid var(--border);border-radius:13px;font-weight:800;word-break:break-word;}
+    .detail-box small{display:block;margin-bottom:3px;color:var(--muted);font-size:.67rem;text-transform:uppercase;}
+
+    .outcome-buttons{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:10px;}
+    .outcome-button{padding:12px 10px;border:1px solid var(--border);border-radius:14px;background:#fff;color:var(--text);font-size:.78rem;font-weight:900;transition:.16s ease;}
+    .outcome-button:hover{border-color:var(--teal);background:#f1f6f6;}
+    .outcome-button.active{color:#fff;background:linear-gradient(135deg,var(--navy-2),var(--teal));border-color:transparent;}
+
+    .resource-links{display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+    .resource-link{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--border);border-radius:11px;background:#fff;color:var(--navy);font-size:.78rem;font-weight:900;text-decoration:none;transition:.16s ease;}
+    .resource-link:hover{transform:translateY(-1px);background:#f5f8f9;color:var(--teal);}
+    .resource-empty{color:var(--muted);font-size:.78rem;font-weight:700;}
+
+    @media(max-width:1000px){.sidebar{width:240px;}}
+    @media(max-width:760px){
+      body{overflow:auto;}
+      .app-shell{height:auto;min-height:100vh;display:block;}
+      .sidebar{width:100%;border-right:0;border-bottom:1px solid var(--border);}
+      .main-content{min-height:70vh;}
+      .detail-grid,.outcome-buttons{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="text-center">
+      <div class="spinner-border" style="color:#3c7375" role="status"></div>
+      <div class="mt-3 fw-bold">Procesando...</div>
+    </div>
+  </div>
+
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar">
+      <div class="brand-title">
+        <i class="bi bi-calendar2-check-fill fs-4"></i>
+        <div><div>Agenda Case Review</div><small class="text-muted fw-semibold">Erick Dessus</small></div>
+      </div>
+
+      <div class="rule-banner">
+        <i class="bi bi-clock-fill fs-5"></i>
+        <div>Por default hay <strong>un solo horario al día</strong>, a las <strong id="minStartLabel">3:00 p. m.</strong> (~1h30). El admin puede abrir horarios adicionales para un día específico.</div>
+      </div>
+
+      <div class="card-soft p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <small class="fw-bold" id="currentMonthYear"></small>
+          <div>
+            <button class="btn btn-sm p-0 me-2" onclick="changeMonth(-1)"><i class="bi bi-chevron-left"></i></button>
+            <button class="btn btn-sm p-0" onclick="changeMonth(1)"><i class="bi bi-chevron-right"></i></button>
+          </div>
+        </div>
+        <div class="mini-calendar-grid" id="miniCalendar"></div>
+      </div>
+
+      <button id="sidebarBookButton" class="btn btn-primary-custom w-100" onclick="openBookingModal()">
+        <i class="bi bi-calendar-plus me-1"></i>Agendar Case Review
+      </button>
+
+      <a id="appSheetLink" class="btn btn-outline-success fw-bold hidden" target="_blank" rel="noopener">
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Abrir Sheet
+      </a>
+    </aside>
+
+    <main class="main-content">
+      <div class="header-bar">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <button class="btn btn-outline-secondary btn-sm" onclick="navigateDate(-1)"><i class="bi bi-chevron-left"></i></button>
+          <h2 class="mb-0 fs-5 fw-bold" id="viewTitle"></h2>
+          <button class="btn btn-outline-secondary btn-sm" onclick="navigateDate(1)"><i class="bi bi-chevron-right"></i></button>
+          <button class="btn btn-light btn-sm border fw-bold" onclick="goToToday()">HOY</button>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span id="adminModePill" class="admin-mode-pill hidden"><i class="bi bi-shield-lock-fill"></i>MODO ADMIN</span>
+          <button id="adminModeButton" class="btn btn-outline-danger btn-sm fw-bold" onclick="toggleAdminMode()"><i class="bi bi-shield-lock me-1"></i>Admin</button>
+          <button class="btn btn-outline-primary btn-sm fw-bold" onclick="loadDailyAgenda(true,true)"><i class="bi bi-arrow-clockwise me-1"></i>Actualizar</button>
+        </div>
+      </div>
+
+      <div class="main-scroll">
+        <div class="calendar-board card-soft">
+          <div class="board-top">
+            <div>
+              <div class="fw-bold">CASE REVIEW · ERICK DESSUS</div>
+              <small class="text-muted fw-semibold" id="agendaCount">0 citas</small>
+            </div>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              <div class="legend-row">
+                <span class="legend-pill" style="background:#f4d7d7;color:#7a2929"><span class="legend-dot" style="background:#b84d4d"></span>Pendiente</span>
+                <span class="legend-pill" style="background:#d3eadc;color:#23583b"><span class="legend-dot" style="background:#3d8660"></span>Finalizado</span>
+                <span class="legend-pill" style="background:#f5d7ae;color:#7b4718"><span class="legend-dot" style="background:#ce7622"></span>Reagenda</span>
+              </div>
+              <button id="headerBookButton" class="btn btn-primary-custom" onclick="openBookingModal()"><i class="bi bi-plus-circle me-1"></i>AGENDAR</button>
+              <button id="adminSlotButton" class="btn btn-outline-primary fw-bold hidden" onclick="openSlotModal()"><i class="bi bi-calendar-plus me-1"></i>ABRIR SLOT</button>
+              <button id="adminBlockButton" class="btn btn-outline-danger fw-bold hidden" onclick="openBlockModal()"><i class="bi bi-calendar-x me-1"></i>BLOQUEAR HORARIO / DÍA</button>
+            </div>
+          </div>
+
+          <div class="timeline-scroll" id="timelineScroll">
+            <div class="timeline-header" id="timelineHeader"></div>
+            <div class="timeline-grid" id="timelineGrid"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL PARA AGENDAR -->
+  <div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Agendar Case Review</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">ID ClickUp <span class="text-muted">(opcional)</span></label>
+              <input type="text" id="bookingClickupId" class="form-control" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Nombre del cliente</label>
+              <input type="text" id="bookingClient" class="form-control" autocomplete="off">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Quién agenda</label>
+              <input type="text" id="bookingScheduledBy" class="form-control" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Fecha del Case Review</label>
+              <input type="date" id="bookingDate" class="form-control" onchange="loadSlotsForBookingModal()">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Horario disponible</label>
+              <select id="bookingSlot" class="form-select" onchange="onBookingSlotChange()"></select>
+              <div class="form-text" id="bookingSlotHint">Cargando horarios de este día...</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold"><i class="bi bi-camera-video-fill me-1"></i>Link de Google Meet <span class="text-muted">(opcional)</span></label>
+              <input type="url" id="bookingMeetLink" class="form-control" placeholder="https://meet.google.com/..." autocomplete="off">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button class="btn btn-primary-custom px-4" onclick="saveBooking()">GUARDAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE BLOQUEOS ADMIN -->
+  <div class="modal fade" id="blockModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>Bloquear agenda</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Fecha</label>
+              <input id="blockDate" type="date" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Tipo de bloqueo</label>
+              <select id="blockType" class="form-select" onchange="updateBlockForm()">
+                <option value="TIME_RANGE">Bloquear un horario</option>
+                <option value="FULL_DAY">Bloquear todo el día</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Motivo</label>
+              <input id="blockReason" type="text" class="form-control" placeholder="Ej. Audiencia, capacitación, no disponible...">
+            </div>
+            <div class="col-md-6 block-time-field">
+              <label class="form-label small fw-bold">Hora inicio</label>
+              <input id="blockStartTime" type="time" class="form-control" value="15:00">
+            </div>
+            <div class="col-md-6 block-time-field">
+              <label class="form-label small fw-bold">Hora fin</label>
+              <input id="blockEndTime" type="time" class="form-control" value="16:00">
+            </div>
+          </div>
+          <div class="alert alert-light border mt-3 mb-0 small">
+            No se permitirá bloquear un horario que ya tenga una cita. Los bloqueos se guardan en la pestaña <strong>BLOQUEOS ERICK</strong>.
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button class="btn btn-danger px-4 fw-bold" onclick="saveBlock()">GUARDAR BLOQUEO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ABRIR SLOT ADICIONAL (ADMIN) -->
+  <div class="modal fade" id="slotModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i>Abrir slot adicional</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Fecha</label>
+              <input id="slotDate" type="date" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Hora inicio</label>
+              <input id="slotStartTime" type="time" class="form-control" value="16:30">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Duración (minutos)</label>
+              <input id="slotDuration" type="number" class="form-control" min="15" step="5" value="90">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Motivo / nota <span class="text-muted">(opcional)</span></label>
+              <input id="slotReason" type="text" class="form-control" placeholder="Ej. Día con más disponibilidad">
+            </div>
+          </div>
+          <div class="alert alert-light border mt-3 mb-0 small">
+            Este slot se suma al horario de 3:00 p. m. que ya existe por default ese día. Si se traslapa con otro slot o con un bloqueo, no se podrá guardar.
+          </div>
+        </div>
+        <div class="modal-footer border-0">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button class="btn btn-primary-custom px-4" onclick="saveSlot()">GUARDAR SLOT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL OUTCOME (para Erick / ATTY) -->
+  <div class="modal fade" id="outcomeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Seguimiento Case Review</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="detail-grid mb-3" id="clientDetails"></div>
+          <div id="clientResourceLinks" class="resource-links mb-4"></div>
+
+          <label class="form-label fw-bold">Outcome</label>
+          <div class="outcome-buttons mb-4">
+            <button type="button" class="outcome-button" data-outcome="FINALIZADO" onclick="selectOutcome('FINALIZADO')"><i class="bi bi-check-circle-fill me-1"></i>FINALIZADO</button>
+            <button type="button" class="outcome-button" data-outcome="NO SE CONTACTÓ" onclick="selectOutcome('NO SE CONTACTÓ')"><i class="bi bi-telephone-x-fill me-1"></i>NO SE CONTACTÓ</button>
+            <button type="button" class="outcome-button" data-outcome="REQUIERE REAGENDA" onclick="selectOutcome('REQUIERE REAGENDA')"><i class="bi bi-calendar2-plus-fill me-1"></i>REQUIERE REAGENDA</button>
+            <button type="button" class="outcome-button" data-outcome="EN PROCESO" onclick="selectOutcome('EN PROCESO')"><i class="bi bi-hourglass-split me-1"></i>EN PROCESO</button>
+            <button type="button" class="outcome-button" data-outcome="CANCELADO" onclick="selectOutcome('CANCELADO')"><i class="bi bi-x-circle-fill me-1"></i>CANCELADO</button>
+          </div>
+
+          <label class="form-label fw-bold">Notas</label>
+          <textarea id="attyNotes" class="form-control" rows="5" placeholder="Escribe aquí las notas del Case Review..."></textarea>
+        </div>
+        <div class="modal-footer border-0">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+          <button class="btn btn-primary-custom px-4" onclick="saveOutcome()">GUARDAR SEGUIMIENTO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Pega aquí la URL /exec de la implementación de Apps Script.
+    const WEB_APP_URL = "https://script.google.com/a/macros/supportmendoza.com/s/AKfycbwvB6Q4m_9C8nDiMPIsLmqt5cx2p3E61PDWeblPAaAbfSFfzk8IOO_hbMONrH19DEZGhQ/exec";
+
+    const PIXELS_PER_MINUTE = 1.6;
+    const TIMELINE_TOP_PADDING = 24;
+    const TIMELINE_BOTTOM_PADDING = 24;
+    const DEFAULT_DISPLAY_START = '15:00';
+    const DEFAULT_DISPLAY_END = '20:00';
+    const DEFAULT_MIN_START = '15:00';
+
+    let selectedDate = new Date();
+    let viewingMonth = selectedDate.getMonth();
+    let viewingYear = selectedDate.getFullYear();
+    let appointments = [];
+    let blocks = [];
+    let adminMode = false;
+    let adminPassword = '';
+    let attorney = { name: 'Erick Dessus', timezone: 'America/Mexico_City', location: 'Ciudad de México' };
+    let displayStart = DEFAULT_DISPLAY_START;
+    let displayEnd = DEFAULT_DISPLAY_END;
+    let minBookableStart = DEFAULT_MIN_START;
+    let defaultSlotStart = DEFAULT_MIN_START;
+    let defaultSlotDurationMinutes = 90;
+    let bookingSlots = [];
+    let selectedClient = null;
+    let selectedOutcome = '';
+    let bookingModal, outcomeModal, blockModal, slotModal;
+    const agendaCache = new Map();
+    const CACHE_TTL_MS = 30000;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+      outcomeModal = new bootstrap.Modal(document.getElementById('outcomeModal'));
+      blockModal = new bootstrap.Modal(document.getElementById('blockModal'));
+      slotModal = new bootstrap.Modal(document.getElementById('slotModal'));
+      renderDateUI();
+
+      try {
+        const bootstrapData = await server('getBootstrapData');
+        if (bootstrapData.attorney) attorney = bootstrapData.attorney;
+        displayStart = bootstrapData.displayStart || DEFAULT_DISPLAY_START;
+        displayEnd = bootstrapData.displayEnd || DEFAULT_DISPLAY_END;
+        minBookableStart = bootstrapData.minBookableStart || DEFAULT_MIN_START;
+        defaultSlotStart = bootstrapData.defaultSlotStart || DEFAULT_MIN_START;
+        defaultSlotDurationMinutes = bootstrapData.defaultSlotDurationMinutes || 90;
+
+        document.getElementById('minStartLabel').textContent = formatTime12(minBookableStart);
+
+        const sheetLink = document.getElementById('appSheetLink');
+        if (bootstrapData.spreadsheetUrl) {
+          sheetLink.href = bootstrapData.spreadsheetUrl;
+          sheetLink.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error(error);
+      }
+
+      await loadDailyAgenda(true);
+    });
+
+    function jsonpRequest(body) {
+      return new Promise((resolve, reject) => {
+        if (!WEB_APP_URL || WEB_APP_URL.includes('PEGA_AQUI')) {
+          reject(new Error('Falta pegar la URL /exec del deployment en WEB_APP_URL dentro de Index.html.'));
+          return;
+        }
+        const callbackName = `crCallback_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+        const script = document.createElement('script');
+        const timeout = setTimeout(() => { cleanup(); reject(new Error('La conexión con Apps Script tardó demasiado.')); }, 25000);
+
+        function cleanup() { clearTimeout(timeout); delete window[callbackName]; if (script.parentNode) script.parentNode.removeChild(script); }
+
+        window[callbackName] = result => {
+          cleanup();
+          if (!result || result.success === false) { reject(new Error(result && result.message ? result.message : 'Apps Script devolvió un error.')); return; }
+          resolve(result);
+        };
+
+        const params = new URLSearchParams({ callback: callbackName, payload: JSON.stringify(body) });
+        script.src = `${WEB_APP_URL}${WEB_APP_URL.includes('?') ? '&' : '?'}${params.toString()}`;
+        script.onerror = () => { cleanup(); reject(new Error('No se pudo conectar con Apps Script. Revisa la URL y los permisos del deployment.')); };
+        document.body.appendChild(script);
+      });
+    }
+
+    async function server(action, data) {
+      const body = { action };
+      if (action === 'getRFEAppointments' || action === 'getRFEBlocks' || action === 'getRFEDailySchedule' || action === 'getAvailableSlots') body.filters = data || {};
+      else if (action === 'deleteRFEAppointment') body.recordId = data || '';
+      else if (data !== undefined) body.payload = data;
+      const result = await jsonpRequest(body);
+      return result.data !== undefined ? result.data : result;
+    }
+
+    function renderDateUI() {
+      renderMiniCalendar();
+      const title = selectedDate.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('viewTitle').textContent = title.toUpperCase();
+    }
+
+    function renderMiniCalendar() {
+      const container = document.getElementById('miniCalendar');
+      container.innerHTML = '';
+      ['D', 'L', 'M', 'M', 'J', 'V', 'S'].forEach(label => {
+        const el = document.createElement('div'); el.className = 'weekday-label'; el.textContent = label; container.appendChild(el);
+      });
+      const monthLabel = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' }).format(new Date(viewingYear, viewingMonth, 1));
+      document.getElementById('currentMonthYear').textContent = capitalize(monthLabel);
+
+      const firstDay = new Date(viewingYear, viewingMonth, 1).getDay();
+      const daysInMonth = new Date(viewingYear, viewingMonth + 1, 0).getDate();
+      const selectedYMD = toYMD(selectedDate);
+      const todayYMD = toYMD(new Date());
+
+      for (let i = 0; i < firstDay; i++) { const e = document.createElement('div'); e.className = 'calendar-empty'; container.appendChild(e); }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(viewingYear, viewingMonth, day, 12, 0, 0);
+        const dateYMD = toYMD(date);
+        const el = document.createElement('div');
+        el.className = ['calendar-day', dateYMD === selectedYMD ? 'active' : '', dateYMD === todayYMD ? 'today' : ''].filter(Boolean).join(' ');
+        el.textContent = day;
+        el.onclick = () => selectCalendarDate(day);
+        container.appendChild(el);
+      }
+    }
+
+    function changeMonth(offset) {
+      viewingMonth += offset;
+      if (viewingMonth > 11) { viewingMonth = 0; viewingYear++; }
+      if (viewingMonth < 0) { viewingMonth = 11; viewingYear--; }
+      renderMiniCalendar();
+    }
+
+    async function selectCalendarDate(day) {
+      selectedDate = new Date(viewingYear, viewingMonth, day, 12, 0, 0);
+      renderDateUI();
+      await loadDailyAgenda(true);
+    }
+
+    async function navigateDate(direction) {
+      const date = new Date(selectedDate); date.setDate(date.getDate() + direction);
+      selectedDate = date; viewingMonth = date.getMonth(); viewingYear = date.getFullYear();
+      renderDateUI(); await loadDailyAgenda(true);
+    }
+
+    async function goToToday() {
+      selectedDate = new Date(); selectedDate.setHours(12, 0, 0, 0);
+      viewingMonth = selectedDate.getMonth(); viewingYear = selectedDate.getFullYear();
+      renderDateUI(); await loadDailyAgenda(true);
+    }
+
+    async function loadDailyAgenda(showOverlay = true, force = false) {
+      const date = toYMD(selectedDate);
+      const cached = agendaCache.get(date);
+      if (!force && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        appointments = cached.appointments || []; blocks = cached.blocks || [];
+        renderTimeline(); return;
+      }
+      try {
+        if (showOverlay) showLoading(true);
+        const schedule = await server('getRFEDailySchedule', { from: date, to: date }) || {};
+        appointments = Array.isArray(schedule.appointments) ? schedule.appointments : [];
+        blocks = Array.isArray(schedule.blocks) ? schedule.blocks : [];
+        agendaCache.set(date, { timestamp: Date.now(), appointments, blocks });
+        renderTimeline();
+      } catch (error) {
+        Swal.fire('Error', error.message || 'No se pudo cargar la agenda.', 'error');
+      } finally {
+        if (showOverlay) showLoading(false);
+      }
+    }
+
+    function renderTimeline() {
+      document.getElementById('agendaCount').textContent = `${appointments.length} ${appointments.length === 1 ? 'cita' : 'citas'}`;
+
+      const bounds = calculateTimelineBounds();
+      const totalMinutes = bounds.end - bounds.start;
+      const contentHeight = Math.max(totalMinutes * PIXELS_PER_MINUTE, 360);
+      const gridHeight = contentHeight + TIMELINE_TOP_PADDING + TIMELINE_BOTTOM_PADDING;
+
+      document.getElementById('timelineHeader').innerHTML = `
+        <div class="time-header"><i class="bi bi-clock me-1"></i>Hora</div>
+        <div class="attorney-header">
+          <div class="attorney-name"><i class="bi bi-person-circle me-1"></i>${escapeHtml(attorney.name)}</div>
+          <div class="attorney-location">${escapeHtml(attorney.location)}</div>
+        </div>`;
+
+      const grid = document.getElementById('timelineGrid');
+      grid.style.minHeight = `${gridHeight}px`;
+      grid.innerHTML = '';
+
+      const timeAxis = document.createElement('div');
+      timeAxis.className = 'time-axis'; timeAxis.style.height = `${gridHeight}px`;
+      for (let minute = bounds.start; minute <= bounds.end; minute += 60) {
+        const label = document.createElement('div');
+        label.className = 'time-label';
+        label.style.top = `${TIMELINE_TOP_PADDING + (minute - bounds.start) * PIXELS_PER_MINUTE}px`;
+        label.textContent = formatTime12(minutesToTime(minute));
+        timeAxis.appendChild(label);
+      }
+      grid.appendChild(timeAxis);
+
+      const lane = document.createElement('div');
+      lane.className = 'attorney-lane';
+      lane.style.height = `${gridHeight}px`;
+      lane.onclick = event => handleLaneClick(event, bounds);
+
+      const minStartMin = timeToMinutes(minBookableStart);
+      if (bounds.start < minStartMin) {
+        lane.appendChild(outsideHoursBlock(TIMELINE_TOP_PADDING, (minStartMin - bounds.start) * PIXELS_PER_MINUTE));
+      }
+
+      blocks.forEach(item => lane.appendChild(createBlockCard(item, bounds)));
+      appointments.slice().sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
+        .forEach(item => lane.appendChild(createEventCard(item, bounds)));
+      grid.appendChild(lane);
+    }
+
+    function outsideHoursBlock(top, height) {
+      const block = document.createElement('div');
+      block.className = 'outside-hours';
+      block.style.top = `${Math.max(0, top)}px`;
+      block.style.height = `${Math.max(0, height)}px`;
+      return block;
+    }
+
+    function calculateTimelineBounds() {
+      const defaultStart = timeToMinutes(displayStart);
+      const defaultEnd = timeToMinutes(displayEnd);
+      let start = defaultStart, end = defaultEnd;
+
+      appointments.forEach(item => {
+        const s = timeToMinutes(item.startTime), e = timeToMinutes(item.endTime);
+        if (Number.isFinite(s)) start = Math.min(start, Math.floor(s / 60) * 60);
+        if (Number.isFinite(e)) end = Math.max(end, Math.ceil(e / 60) * 60);
+      });
+      blocks.filter(item => item.type !== 'FULL_DAY').forEach(item => {
+        const s = timeToMinutes(item.startTime), e = timeToMinutes(item.endTime);
+        if (Number.isFinite(s)) start = Math.min(start, Math.floor(s / 60) * 60);
+        if (Number.isFinite(e)) end = Math.max(end, Math.ceil(e / 60) * 60);
+      });
+      return { start: Math.max(0, start), end: Math.min(1440, end) };
+    }
+
+    function createBlockCard(item, bounds) {
+      const fullDay = item.type === 'FULL_DAY';
+      const start = fullDay ? bounds.start : timeToMinutes(item.startTime);
+      const end = fullDay ? bounds.end : timeToMinutes(item.endTime);
+      const duration = Math.max(1, end - start);
+      const card = document.createElement('div');
+      card.className = `blocked-card ${adminMode ? 'admin-unlockable' : ''}`;
+      card.style.top = `${TIMELINE_TOP_PADDING + (start - bounds.start) * PIXELS_PER_MINUTE + 2}px`;
+      card.style.height = `${Math.max(duration * PIXELS_PER_MINUTE - 4, 32)}px`;
+      const label = fullDay ? 'DÍA BLOQUEADO' : `${formatTime12(item.startTime)}–${formatTime12(item.endTime)}`;
+      card.innerHTML = `<div><i class="bi bi-lock-fill me-1"></i>${escapeHtml(label)}<small>${escapeHtml(item.reason || 'Horario no disponible')}${adminMode ? ' · Click para desbloquear' : ''}</small></div>`;
+      card.onclick = event => { event.stopPropagation(); if (adminMode) confirmDeleteBlock(item); };
+      return card;
+    }
+
+    function createEventCard(item, bounds) {
+      const start = timeToMinutes(item.startTime), end = timeToMinutes(item.endTime);
+      const duration = Math.max(1, end - start);
+      const card = document.createElement('div');
+      card.className = `event-card ${cardClass(item)}`;
+      card.style.top = `${TIMELINE_TOP_PADDING + (start - bounds.start) * PIXELS_PER_MINUTE + 2}px`;
+      card.style.height = `${Math.max(duration * PIXELS_PER_MINUTE - 4, 20)}px`;
+      card.onclick = event => { event.stopPropagation(); openOutcomeModal(item); };
+      card.innerHTML = `
+        <div class="event-time">${escapeHtml(formatTime12(item.startTime))}–${escapeHtml(formatTime12(item.endTime))} · ${escapeHtml(String(item.durationMinutes || duration))} min</div>
+        <div class="event-client">${escapeHtml(item.client)}</div>
+        <div class="event-meta">${escapeHtml(item.outcome || 'PENDIENTE')}${item.scheduledBy ? ' · Agendó ' + escapeHtml(item.scheduledBy) : ''}</div>`;
+      return card;
+    }
+
+    function handleLaneClick(event, bounds) {
+      if (event.target.closest('.event-card') || event.target.closest('.blocked-card')) return;
+      if (adminMode) {
+        const suggestedTime = getSuggestedStartTime(event.currentTarget, event, bounds);
+        openBlockModal(suggestedTime);
+        return;
+      }
+      openBookingModal();
+    }
+
+    function getSuggestedStartTime(lane, event, bounds) {
+      const rect = lane.getBoundingClientRect();
+      const offsetY = Math.max(0, event.clientY - rect.top - TIMELINE_TOP_PADDING);
+      const clickedMinute = Math.max(bounds.start, Math.min(bounds.end, bounds.start + offsetY / PIXELS_PER_MINUTE));
+      const minStart = Math.max(timeToMinutes(minBookableStart), bounds.start);
+
+      const busy = [
+        ...appointments.map(item => ({ start: timeToMinutes(item.startTime), end: timeToMinutes(item.endTime) })),
+        ...blocks.map(item => ({ start: item.type === 'FULL_DAY' ? 0 : timeToMinutes(item.startTime), end: item.type === 'FULL_DAY' ? 1440 : timeToMinutes(item.endTime) }))
+      ].filter(item => Number.isFinite(item.start) && Number.isFinite(item.end)).sort((a, b) => a.start - b.start);
+
+      if (!busy.length) return minutesToTime(Math.max(minStart, clickedMinute));
+
+      let previousEnd = minStart - 5;
+      for (const item of busy) {
+        const gapStart = Math.max(minStart, previousEnd + 5);
+        if (clickedMinute < item.start && gapStart < item.start) return minutesToTime(gapStart);
+        if (clickedMinute >= item.start && clickedMinute <= item.end) return minutesToTime(Math.min(1435, item.end + 5));
+        previousEnd = Math.max(previousEnd, item.end);
+      }
+      return minutesToTime(Math.min(1435, Math.max(previousEnd + 5, minStart)));
+    }
+
+    async function toggleAdminMode() {
+      if (adminMode) { adminMode = false; adminPassword = ''; updateAdminModeUI(); renderTimeline(); return; }
+      const result = await Swal.fire({
+        title: 'Modo administrador', text: 'Ingresa la contraseña para bloquear horarios o días.',
+        input: 'password', inputPlaceholder: 'Contraseña', showCancelButton: true,
+        confirmButtonText: 'Entrar', cancelButtonText: 'Cancelar', allowOutsideClick: false,
+        inputValidator: value => !value ? 'Ingresa la contraseña.' : undefined
+      });
+      if (!result.isConfirmed) return;
+      try {
+        showLoading(true);
+        await server('verifyRFEAdmin', { password: String(result.value || '') });
+        adminPassword = String(result.value || ''); adminMode = true;
+        updateAdminModeUI(); renderTimeline();
+        Swal.fire('Modo administrador activo', 'Puedes usar el botón de bloqueo o hacer clic en la agenda.', 'success');
+      } catch (error) {
+        Swal.fire('Acceso denegado', error.message || 'Contraseña incorrecta.', 'error');
+      } finally { showLoading(false); }
+    }
+
+    function updateAdminModeUI() {
+      const pill = document.getElementById('adminModePill');
+      const button = document.getElementById('adminModeButton');
+      const blockButton = document.getElementById('adminBlockButton');
+      const slotButton = document.getElementById('adminSlotButton');
+      const sidebarBook = document.getElementById('sidebarBookButton');
+      const headerBook = document.getElementById('headerBookButton');
+
+      document.body.classList.toggle('admin-mode', adminMode);
+      pill.classList.toggle('hidden', !adminMode);
+      blockButton.classList.toggle('hidden', !adminMode);
+      slotButton.classList.toggle('hidden', !adminMode);
+      sidebarBook.classList.toggle('hidden', adminMode);
+      headerBook.classList.toggle('hidden', adminMode);
+
+      if (adminMode) {
+        button.classList.remove('btn-outline-danger'); button.classList.add('btn-danger');
+        button.innerHTML = '<i class="bi bi-shield-x me-1"></i>Salir Admin';
+      } else {
+        button.classList.remove('btn-danger'); button.classList.add('btn-outline-danger');
+        button.innerHTML = '<i class="bi bi-shield-lock me-1"></i>Admin';
+      }
+    }
+
+    function openBlockModal(suggestedTime = '') {
+      if (!adminMode) return;
+      document.getElementById('blockDate').value = toYMD(selectedDate);
+      document.getElementById('blockType').value = 'TIME_RANGE';
+      document.getElementById('blockStartTime').value = suggestedTime || minBookableStart;
+      document.getElementById('blockEndTime').value = minutesToTime(Math.min(1439, timeToMinutes(document.getElementById('blockStartTime').value) + 60));
+      document.getElementById('blockReason').value = '';
+      updateBlockForm();
+      blockModal.show();
+    }
+
+    function updateBlockForm() {
+      const fullDay = document.getElementById('blockType').value === 'FULL_DAY';
+      document.querySelectorAll('.block-time-field').forEach(field => field.classList.toggle('hidden', fullDay));
+    }
+
+    async function saveBlock() {
+      if (!adminMode || !adminPassword) return;
+      const type = document.getElementById('blockType').value;
+      const payload = {
+        password: adminPassword, date: document.getElementById('blockDate').value, type,
+        startTime: type === 'FULL_DAY' ? '' : document.getElementById('blockStartTime').value,
+        endTime: type === 'FULL_DAY' ? '' : document.getElementById('blockEndTime').value,
+        reason: document.getElementById('blockReason').value.trim()
+      };
+      if (!payload.date) { Swal.fire('Falta la fecha', 'Selecciona la fecha a bloquear.', 'warning'); return; }
+      if (type === 'TIME_RANGE' && (!payload.startTime || !payload.endTime || timeToMinutes(payload.endTime) <= timeToMinutes(payload.startTime))) {
+        Swal.fire('Horario inválido', 'La hora fin debe ser posterior a la hora de inicio.', 'warning'); return;
+      }
+      try {
+        showLoading(true);
+        const result = await server('saveRFEBlock', payload);
+        blockModal.hide();
+        selectedDate = ymdToLocalDate(payload.date);
+        viewingMonth = selectedDate.getMonth(); viewingYear = selectedDate.getFullYear();
+        renderDateUI(); invalidateAgendaCache([payload.date]);
+        await loadDailyAgenda(false, true);
+        Swal.fire('Bloqueo guardado', result.message || 'La agenda quedó bloqueada.', 'success');
+      } catch (error) {
+        Swal.fire('No se pudo bloquear', error.message || 'Ocurrió un error.', 'error');
+      } finally { showLoading(false); }
+    }
+
+    async function confirmDeleteBlock(item) {
+      if (!adminMode || !adminPassword) return;
+      const result = await Swal.fire({
+        icon: 'warning', title: '¿Desbloquear este espacio?',
+        text: item.type === 'FULL_DAY' ? 'El día volverá a quedar disponible.' : `${formatTime12(item.startTime)}–${formatTime12(item.endTime)} volverá a quedar disponible.`,
+        showCancelButton: true, confirmButtonText: 'Sí, desbloquear', cancelButtonText: 'Cancelar', confirmButtonColor: '#a63f3f'
+      });
+      if (!result.isConfirmed) return;
+      try {
+        showLoading(true);
+        const response = await server('deleteRFEBlock', { password: adminPassword, recordId: item.recordId });
+        invalidateAgendaCache([item.date]); await loadDailyAgenda(false, true);
+        Swal.fire('Desbloqueado', response.message || 'El horario vuelve a estar disponible.', 'success');
+      } catch (error) {
+        Swal.fire('Error', error.message || 'No se pudo eliminar el bloqueo.', 'error');
+      } finally { showLoading(false); }
+    }
+
+    async function openBookingModal() {
+      if (adminMode) return;
+      document.getElementById('bookingClickupId').value = '';
+      document.getElementById('bookingClient').value = '';
+      document.getElementById('bookingScheduledBy').value = '';
+      document.getElementById('bookingDate').value = toYMD(selectedDate);
+      document.getElementById('bookingMeetLink').value = '';
+      bookingModal.show();
+      await loadSlotsForBookingModal();
+    }
+
+    async function loadSlotsForBookingModal() {
+      const date = document.getElementById('bookingDate').value;
+      const select = document.getElementById('bookingSlot');
+      const hint = document.getElementById('bookingSlotHint');
+      select.innerHTML = '';
+      select.disabled = true;
+      hint.textContent = 'Cargando horarios de este día...';
+      if (!date) return;
+
+      try {
+        bookingSlots = await server('getAvailableSlots', { date }) || [];
+      } catch (error) {
+        bookingSlots = [];
+        hint.textContent = error.message || 'No se pudieron cargar los horarios.';
+        return;
+      }
+
+      if (!bookingSlots.length) {
+        hint.textContent = 'No hay horarios este día (puede estar bloqueado). Pide al admin que abra un slot si es necesario.';
+        return;
+      }
+
+      bookingSlots.forEach((slot, index) => {
+        const label = `${formatTime12(slot.start)} – ${formatTime12(slot.end)}${slot.available ? '' : ' (ya ocupado)'}`;
+        const option = new Option(label, index);
+        if (!slot.available) option.disabled = true;
+        select.appendChild(option);
+      });
+
+      const firstAvailableIndex = bookingSlots.findIndex(slot => slot.available);
+      if (firstAvailableIndex >= 0) {
+        select.value = firstAvailableIndex;
+        select.disabled = false;
+        hint.textContent = `${bookingSlots.filter(s => s.available).length} horario(s) disponible(s) este día.`;
+      } else {
+        hint.textContent = 'Todos los horarios de este día ya están ocupados.';
+      }
+    }
+
+    function onBookingSlotChange() {
+      // Solo informativo por ahora; la validación real ocurre al guardar.
+    }
+
+    async function saveBooking() {
+      const client = document.getElementById('bookingClient').value.trim();
+      const scheduledBy = document.getElementById('bookingScheduledBy').value.trim();
+      const crDate = document.getElementById('bookingDate').value;
+      const slotIndex = document.getElementById('bookingSlot').value;
+      const slot = bookingSlots[slotIndex];
+
+      if (!client || !scheduledBy || !crDate || !slot) {
+        Swal.fire('Faltan datos', 'Completa cliente, quién agenda, fecha y elige un horario disponible.', 'warning'); return;
+      }
+      if (!slot.available) {
+        Swal.fire('Horario ocupado', 'Ese horario ya tiene un Case Review. Elige otro.', 'warning'); return;
+      }
+
+      const payload = {
+        clickupId: document.getElementById('bookingClickupId').value.trim(),
+        client, scheduledBy, crDate,
+        startTime: slot.start, endTime: slot.end,
+        meetLink: document.getElementById('bookingMeetLink').value.trim()
+      };
+
+      try {
+        showLoading(true);
+        const result = await server('saveRFEAppointment', payload);
+        bookingModal.hide();
+        selectedDate = ymdToLocalDate(payload.crDate);
+        viewingMonth = selectedDate.getMonth(); viewingYear = selectedDate.getFullYear();
+        renderDateUI(); invalidateAgendaCache([payload.crDate]);
+        await loadDailyAgenda(false, true);
+        Swal.fire('Guardado', `${result.message || 'Case Review guardado'} Horario: ${formatTime12(result.startTime)}–${formatTime12(result.endTime)}.`, 'success');
+      } catch (error) {
+        Swal.fire('Error', error.message || 'No se pudo guardar el Case Review.', 'error');
+      } finally { showLoading(false); }
+    }
+
+    function openSlotModal() {
+      if (!adminMode) return;
+      document.getElementById('slotDate').value = toYMD(selectedDate);
+      document.getElementById('slotStartTime').value = minutesToTime(timeToMinutes(defaultSlotStart) + defaultSlotDurationMinutes + 15);
+      document.getElementById('slotDuration').value = defaultSlotDurationMinutes;
+      document.getElementById('slotReason').value = '';
+      slotModal.show();
+    }
+
+    async function saveSlot() {
+      if (!adminMode || !adminPassword) return;
+      const payload = {
+        password: adminPassword,
+        date: document.getElementById('slotDate').value,
+        startTime: document.getElementById('slotStartTime').value,
+        durationMinutes: document.getElementById('slotDuration').value,
+        reason: document.getElementById('slotReason').value.trim()
+      };
+      if (!payload.date || !payload.startTime || !payload.durationMinutes) {
+        Swal.fire('Faltan datos', 'Completa fecha, hora de inicio y duración.', 'warning'); return;
+      }
+      try {
+        showLoading(true);
+        const result = await server('saveRFESlot', payload);
+        slotModal.hide();
+        selectedDate = ymdToLocalDate(payload.date);
+        viewingMonth = selectedDate.getMonth(); viewingYear = selectedDate.getFullYear();
+        renderDateUI(); invalidateAgendaCache([payload.date]);
+        await loadDailyAgenda(false, true);
+        Swal.fire('Slot agregado', result.message || 'El slot quedó disponible.', 'success');
+      } catch (error) {
+        Swal.fire('No se pudo agregar el slot', error.message || 'Ocurrió un error.', 'error');
+      } finally { showLoading(false); }
+    }
+
+    function openOutcomeModal(item) {
+      selectedClient = item; selectedOutcome = item.outcome || '';
+      document.getElementById('clientDetails').innerHTML = [
+        detailBox('Horario', `${formatTime12(item.startTime)} – ${formatTime12(item.endTime)}`),
+        detailBox('Quién agendó', item.scheduledBy || ''),
+        detailBox('Estatus', item.status || 'PENDIENTE')
+      ].join('');
+      document.getElementById('clientResourceLinks').innerHTML = item.meetLink
+        ? `<a class="resource-link" href="${escapeAttr(item.meetLink)}" target="_blank" rel="noopener noreferrer"><i class="bi bi-camera-video-fill"></i>Google Meet</a>`
+        : '<span class="resource-empty">No se agregó link de Meet para este cliente.</span>';
+      document.getElementById('attyNotes').value = item.attyNotes || '';
+      updateOutcomeButtons();
+      outcomeModal.show();
+    }
+
+    function selectOutcome(outcome) { selectedOutcome = outcome; updateOutcomeButtons(); }
+    function updateOutcomeButtons() {
+      document.querySelectorAll('.outcome-button').forEach(button => button.classList.toggle('active', button.dataset.outcome === selectedOutcome));
+    }
+
+    async function saveOutcome() {
+      if (!selectedClient) return;
+      if (!selectedOutcome) { Swal.fire('Falta outcome', 'Selecciona un outcome.', 'warning'); return; }
+      try {
+        showLoading(true);
+        const result = await server('updateRFEOutcome', {
+          recordId: selectedClient.recordId, outcome: selectedOutcome, notes: document.getElementById('attyNotes').value.trim()
+        });
+        outcomeModal.hide();
+        invalidateAgendaCache([selectedClient.crDate]);
+        await loadDailyAgenda(false, true);
+        Swal.fire('Guardado', result.message || 'Seguimiento guardado.', 'success');
+      } catch (error) {
+        Swal.fire('Error', error.message || 'No se pudo guardar el seguimiento.', 'error');
+      } finally { showLoading(false); }
+    }
+
+    function detailBox(label, value) { return `<div class="detail-box"><small>${escapeHtml(label)}</small>${escapeHtml(value || '')}</div>`; }
+
+    function cardClass(item) {
+      const value = normalizedStatus(item);
+      if (value === 'FINALIZADO') return 'done';
+      if (value === 'REAGENDADO') return 'rescheduled';
+      if (value === 'EN PROCESO') return 'process';
+      if (value === 'NO CONTACTADO') return 'no-contact';
+      if (value === 'CANCELADO') return 'cancelled';
+      return 'pending';
+    }
+
+    function normalizedStatus(item) {
+      const outcome = stripAccents(String(item.outcome || '').toUpperCase());
+      const status = stripAccents(String(item.status || '').toUpperCase());
+      if (outcome.includes('FINALIZADO') || status.includes('FINALIZADO')) return 'FINALIZADO';
+      if (outcome.includes('REQUIERE REAGENDA') || status.includes('REAGENDADO')) return 'REAGENDADO';
+      if (outcome.includes('EN PROCESO') || status.includes('EN PROCESO')) return 'EN PROCESO';
+      if (outcome.includes('NO SE CONTACTO') || status.includes('NO CONTACTADO')) return 'NO CONTACTADO';
+      if (outcome.includes('CANCELADO') || status.includes('CANCELADO')) return 'CANCELADO';
+      return 'PENDIENTE';
+    }
+
+    function invalidateAgendaCache(dates) { (dates || []).filter(Boolean).forEach(date => agendaCache.delete(date)); }
+    function showLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+
+    function ymdToLocalDate(ymd) {
+      const parts = String(ymd || '').split('-').map(Number);
+      return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+    }
+
+    function timeToMinutes(time) {
+      const parts = String(time || '').split(':').map(Number);
+      if (parts.length < 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) return NaN;
+      return parts[0] * 60 + parts[1];
+    }
+
+    function minutesToTime(minutes) {
+      const value = Math.max(0, Math.min(1439, Math.round(minutes)));
+      return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+    }
+
+    function formatTime12(value) {
+      if (!value) return '';
+      const parts = String(value).split(':').map(Number);
+      if (parts.length < 2 || !Number.isFinite(parts[0])) return String(value);
+      let hour = parts[0];
+      const suffix = hour >= 12 ? 'p. m.' : 'a. m.';
+      hour %= 12; if (hour === 0) hour = 12;
+      return `${hour}:${String(parts[1]).padStart(2, '0')} ${suffix}`;
+    }
+
+    function toYMD(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function stripAccents(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+    function capitalize(value) { const t = String(value || ''); return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''; }
+    function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    function escapeAttr(value) { return escapeHtml(value).replace(/'/g, '&#39;'); }
+  </script>
+</body>
+</html>
