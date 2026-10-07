@@ -171,7 +171,7 @@
 
       <div class="rule-banner">
         <i class="bi bi-clock-fill fs-5"></i>
-        <div>Por default hay <strong>un solo horario al día</strong>, a las <strong id="minStartLabel">3:00 p. m.</strong> (~1h30), de lunes a viernes. <strong>Sábados y domingos están bloqueados por default</strong> — el admin puede abrir un horario ahí si hace falta.</div>
+        <div>Un solo horario al día</strong>, a las <strong id="minStartLabel">3:00 p. m.</strong> (1h 30 CDMX), de lunes a viernes.</div>
       </div>
 
       <div class="card-soft p-3">
@@ -317,7 +317,14 @@
             </div>
             <div class="col-md-6">
               <label class="form-label small fw-bold">Fecha</label>
-              <input id="blockDate" type="date" class="form-control">
+              <input id="blockDate" type="date" class="form-control" onchange="updateBlockRepeatLabel()">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Repetición</label>
+              <select id="blockRepeat" class="form-select">
+                <option value="NONE">Solo esta fecha</option>
+                <option value="WEEKLY">Siempre</option>
+              </select>
             </div>
             <div class="col-md-6">
               <label class="form-label small fw-bold">Tipo de bloqueo</label>
@@ -340,7 +347,7 @@
             </div>
           </div>
           <div class="alert alert-light border mt-3 mb-0 small">
-            No se permitirá bloquear un horario que ya tenga una cita. Los bloqueos se guardan en la pestaña <strong>BLOQUEOS ERICK</strong>.
+            No se permitirá bloquear un horario que ya tenga una cita. Los bloqueos se guardan en la pestaña <strong>BLOQUEOS ERICK</strong>. Los sábados y domingos ya están bloqueados por default; "Siempre" sirve para bloquear de forma permanente otro día de la semana (ej. todos los lunes).
           </div>
         </div>
         <div class="modal-footer border-0">
@@ -383,7 +390,7 @@
             </div>
           </div>
           <div class="alert alert-light border mt-3 mb-0 small">
-            Este slot se suma al horario de 3:00 p. m. que ya existe por default ese día. Si se traslapa con otro slot o con un bloqueo, no se podrá guardar.
+            Entre semana, este slot se suma al horario de 3:00 p. m. que ya existe por default. En sábado o domingo (bloqueados por default), abrir un slot es lo que "desbloquea" ese día para el abogado elegido. Si se traslapa con otro slot o con un bloqueo, no se podrá guardar.
           </div>
         </div>
         <div class="modal-footer border-0">
@@ -727,8 +734,10 @@
       card.className = `blocked-card ${adminMode ? 'admin-unlockable' : ''}`;
       card.style.top = `${TIMELINE_TOP_PADDING + (start - bounds.start) * PIXELS_PER_MINUTE + 2}px`;
       card.style.height = `${Math.max(duration * PIXELS_PER_MINUTE - 4, 32)}px`;
-      const label = fullDay ? 'DÍA BLOQUEADO' : `${formatTime12(item.startTime)}–${formatTime12(item.endTime)}`;
-      card.innerHTML = `<div><i class="bi bi-lock-fill me-1"></i>${escapeHtml(label)}<small>${escapeHtml(item.reason || 'Horario no disponible')}${adminMode ? ' · Click para desbloquear' : ''}</small></div>`;
+      const label = item.virtual ? 'FIN DE SEMANA' : (fullDay ? 'DÍA BLOQUEADO' : `${formatTime12(item.startTime)}–${formatTime12(item.endTime)}`);
+      const adminHint = adminMode ? (item.virtual ? ' · Click para abrir un slot' : ' · Click para desbloquear') : '';
+      const repeatTag = item.recurring ? ' · Siempre' : '';
+      card.innerHTML = `<div><i class="bi bi-lock-fill me-1"></i>${escapeHtml(label)}<small>${escapeHtml(item.reason || 'Horario no disponible')}${repeatTag}${adminHint}</small></div>`;
       card.onclick = event => { event.stopPropagation(); if (adminMode) confirmDeleteBlock(item); };
       return card;
     }
@@ -831,11 +840,23 @@
       document.getElementById('blockAtty').value = attorneys.some(a => a.name === attyName) ? attyName : 'ALL';
       document.getElementById('blockDate').value = toYMD(selectedDate);
       document.getElementById('blockType').value = 'TIME_RANGE';
+      document.getElementById('blockRepeat').value = 'NONE';
       document.getElementById('blockStartTime').value = suggestedTime || minBookableStart;
       document.getElementById('blockEndTime').value = minutesToTime(Math.min(1439, timeToMinutes(document.getElementById('blockStartTime').value) + 60));
       document.getElementById('blockReason').value = '';
       updateBlockForm();
+      updateBlockRepeatLabel();
       blockModal.show();
+    }
+
+    const WEEKDAY_NAMES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    function updateBlockRepeatLabel() {
+      const dateValue = document.getElementById('blockDate').value;
+      const option = document.querySelector('#blockRepeat option[value="WEEKLY"]');
+      if (!option) return;
+      option.textContent = dateValue
+        ? `Siempre (todos los ${WEEKDAY_NAMES[ymdToLocalDate(dateValue).getDay()]})`
+        : 'Siempre';
     }
 
     function updateBlockForm() {
@@ -849,6 +870,7 @@
       const payload = {
         password: adminPassword, atty: document.getElementById('blockAtty').value,
         date: document.getElementById('blockDate').value, type,
+        repeat: document.getElementById('blockRepeat').value === 'WEEKLY' ? 'WEEKLY' : '',
         startTime: type === 'FULL_DAY' ? '' : document.getElementById('blockStartTime').value,
         endTime: type === 'FULL_DAY' ? '' : document.getElementById('blockEndTime').value,
         reason: document.getElementById('blockReason').value.trim()
@@ -873,9 +895,15 @@
 
     async function confirmDeleteBlock(item) {
       if (!adminMode || !adminPassword) return;
+      if (item.virtual) {
+        // Fin de semana: se "desbloquea" abriendo un slot para ese abogado y fecha.
+        openSlotModal(item.atty, item.date);
+        return;
+      }
+      const baseText = item.type === 'FULL_DAY' ? 'El día volverá a quedar disponible.' : `${formatTime12(item.startTime)}–${formatTime12(item.endTime)} volverá a quedar disponible.`;
       const result = await Swal.fire({
         icon: 'warning', title: '¿Desbloquear este espacio?',
-        text: item.type === 'FULL_DAY' ? 'El día volverá a quedar disponible.' : `${formatTime12(item.startTime)}–${formatTime12(item.endTime)} volverá a quedar disponible.`,
+        text: item.recurring ? `Este bloqueo se repite "siempre". Al desbloquear se quita de TODAS las semanas, no solo de este día. ${baseText}` : baseText,
         showCancelButton: true, confirmButtonText: 'Sí, desbloquear', cancelButtonText: 'Cancelar', confirmButtonColor: '#a63f3f'
       });
       if (!result.isConfirmed) return;
@@ -1026,11 +1054,16 @@
       } finally { showLoading(false); }
     }
 
-    function openSlotModal() {
+    function openSlotModal(attyName = '', dateYMD = '') {
       if (!adminMode) return;
-      document.getElementById('slotAtty').value = attorneys[0].name;
-      document.getElementById('slotDate').value = toYMD(selectedDate);
-      document.getElementById('slotStartTime').value = minutesToTime(timeToMinutes(defaultSlotStart) + defaultSlotDurationMinutes + 15);
+      const date = dateYMD || toYMD(selectedDate);
+      const isWeekendDate = [0, 6].includes(ymdToLocalDate(date).getDay());
+      document.getElementById('slotAtty').value = attorneys.some(a => a.name === attyName) ? attyName : attorneys[0].name;
+      document.getElementById('slotDate').value = date;
+      // Fin de semana: no hay horario default, así que se sugiere el de las 3pm; entre semana, uno después del default.
+      document.getElementById('slotStartTime').value = isWeekendDate
+        ? defaultSlotStart
+        : minutesToTime(timeToMinutes(defaultSlotStart) + defaultSlotDurationMinutes + 15);
       document.getElementById('slotDuration').value = defaultSlotDurationMinutes;
       document.getElementById('slotReason').value = '';
       slotModal.show();
