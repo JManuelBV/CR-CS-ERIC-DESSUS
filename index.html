@@ -65,16 +65,17 @@
     .btn-primary-custom{color:#fff;border:0;font-weight:900;background:linear-gradient(135deg,var(--navy-2),var(--teal));box-shadow:0 8px 18px rgba(31,55,72,.16);}
     .btn-primary-custom:hover{color:#fff;filter:brightness(.96);}
 
-    .calendar-board{min-width:520px;overflow:hidden;}
+    .calendar-board{min-width:920px;overflow:hidden;}
     .board-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--border);background:#fff;}
     .legend-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
     .legend-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:999px;font-size:.68rem;font-weight:900;}
     .legend-dot{width:9px;height:9px;border-radius:999px;}
 
-    .timeline-header,.timeline-grid{display:grid;grid-template-columns:96px minmax(360px,1fr);min-width:520px;}
+    .timeline-header,.timeline-grid{display:grid;grid-template-columns:96px repeat(2,minmax(360px,1fr));min-width:920px;}
     .timeline-header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 4px 12px rgba(31,55,72,.06);}
     .time-header{display:flex;align-items:center;justify-content:center;min-height:72px;color:var(--muted);font-size:.76rem;font-weight:900;border-right:1px solid var(--border);background:#f5f7f8;}
-    .attorney-header{min-width:0;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 18px;text-align:center;background:linear-gradient(135deg,#f1f5f7,#fafcfc);}
+    .attorney-header{min-width:0;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 18px;text-align:center;border-right:1px solid var(--border);background:linear-gradient(135deg,#f1f5f7,#fafcfc);}
+    .attorney-header:last-child{border-right:0;}
     .attorney-name{color:var(--navy);font-weight:900;font-size:1.02rem;}
     .attorney-location{margin-top:3px;color:var(--muted);font-size:.72rem;font-weight:800;}
 
@@ -84,7 +85,8 @@
     .time-label{position:absolute;left:0;right:0;z-index:2;transform:translateY(-50%);padding:0 14px 0 6px;color:#526570;background:#f7f9fa;font-size:.74rem;font-weight:900;line-height:1;text-align:right;white-space:nowrap;}
     .time-label::after{content:"";position:absolute;right:0;top:50%;width:7px;height:1px;background:#aebbc2;}
 
-    .attorney-lane{position:relative;background-color:#fff;cursor:pointer;transition:background-color .15s ease;}
+    .attorney-lane{position:relative;border-right:1px solid var(--border);background-color:#fff;cursor:pointer;transition:background-color .15s ease;}
+    .attorney-lane:last-child{border-right:0;}
     .attorney-lane:hover{background-color:#f9fbfc;}
     .outside-hours{position:absolute;left:0;right:0;background:rgba(55,72,82,.045);pointer-events:none;}
 
@@ -148,7 +150,7 @@
     <div class="landing-card">
       <div class="landing-eyebrow">Mendoza Law Firm</div>
       <h1 class="landing-title">Agenda Case Review</h1>
-      <div class="landing-subtitle">Erick Dessus · Selecciona el módulo.</div>
+      <div class="landing-subtitle">Erick Dessus y Jesús Martínez · Selecciona el módulo.</div>
       <div class="landing-actions">
         <button class="landing-btn btn-cs" onclick="enterMode('CS')">
           <i class="bi bi-calendar-plus-fill me-2"></i>AGENDAR
@@ -164,7 +166,7 @@
     <aside class="sidebar">
       <div class="brand-title">
         <i class="bi bi-calendar2-check-fill fs-4"></i>
-        <div><div>Agenda Case Review</div><small class="text-muted fw-semibold" id="modeSubtitle">Erick Dessus</small></div>
+        <div><div>Agenda Case Review</div><small class="text-muted fw-semibold" id="modeSubtitle">Erick Dessus y Jesús Martínez</small></div>
       </div>
 
       <div class="rule-banner">
@@ -242,27 +244,46 @@
         </div>
         <div class="modal-body p-4">
           <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label small fw-bold">ID ClickUp <span class="text-muted">(Obligatorio, de lo contrario no se le asignara al abgado; Pero tiene que ser el de clickup no el del cliente)</span></label>
-              <input type="text" id="bookingClickupId" class="form-control" autocomplete="off">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold">Nombre del cliente</label>
-              <input type="text" id="bookingClient" class="form-control" autocomplete="off">
+            <div class="col-12">
+              <label class="form-label small fw-bold">Cliente (pendientes de ClickUp)</label>
+              <select id="bookingClientSelect" class="form-select" onchange="onBookingClientSelectChange()"></select>
+              <div class="form-text">
+                El ID de ClickUp se llena solo al elegir el cliente de la lista.
+                <a href="#" onclick="toggleManualClient(event)" id="manualClientToggle">¿No aparece? Agrégalo manualmente</a>.
+              </div>
             </div>
 
+            <div id="manualClientFields" class="col-12 hidden">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Nombre del cliente</label>
+                  <input type="text" id="bookingClientManual" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">ID ClickUp <span class="text-muted">(muy importante — sin esto no se actualiza ClickUp)</span></label>
+                  <input type="text" id="bookingClickupIdManual" class="form-control" autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Abogado</label>
+              <select id="bookingAtty" class="form-select" onchange="loadSlotsForBookingModal()"></select>
+            </div>
             <div class="col-md-6">
               <label class="form-label small fw-bold">Quién agenda</label>
               <input type="text" id="bookingScheduledBy" class="form-control" autocomplete="off">
             </div>
+
             <div class="col-md-6">
               <label class="form-label small fw-bold">Fecha del Case Review</label>
               <input type="date" id="bookingDate" class="form-control" onchange="loadSlotsForBookingModal()">
             </div>
-
-            <div class="col-12">
+            <div class="col-md-6">
               <label class="form-label small fw-bold">Horario disponible</label>
               <select id="bookingSlot" class="form-select" onchange="onBookingSlotChange()"></select>
+            </div>
+            <div class="col-12">
               <div class="form-text" id="bookingSlotHint">Cargando horarios de este día...</div>
             </div>
 
@@ -290,6 +311,10 @@
         </div>
         <div class="modal-body p-4">
           <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Abogado</label>
+              <select id="blockAtty" class="form-select"><option value="ALL">Ambos abogados</option></select>
+            </div>
             <div class="col-md-6">
               <label class="form-label small fw-bold">Fecha</label>
               <input id="blockDate" type="date" class="form-control">
@@ -336,6 +361,10 @@
         </div>
         <div class="modal-body p-4">
           <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Abogado</label>
+              <select id="slotAtty" class="form-select"></select>
+            </div>
             <div class="col-md-6">
               <label class="form-label small fw-bold">Fecha</label>
               <input id="slotDate" type="date" class="form-control">
@@ -418,7 +447,12 @@
     let blocks = [];
     let adminMode = false;
     let adminPassword = '';
-    let attorney = { name: 'Erick Dessus', timezone: 'America/Mexico_City', location: 'Ciudad de México' };
+    let attorneys = [
+      { name: 'Erick Dessus', location: 'Puerto Rico' },
+      { name: 'Jesús Martínez', location: 'Puerto Rico' }
+    ];
+    let pendingClients = [];
+    let manualClientMode = false;
     let displayStart = DEFAULT_DISPLAY_START;
     let displayEnd = DEFAULT_DISPLAY_END;
     let minBookableStart = DEFAULT_MIN_START;
@@ -441,7 +475,7 @@
 
       try {
         const bootstrapData = await server('getBootstrapData');
-        if (bootstrapData.attorney) attorney = bootstrapData.attorney;
+        if (Array.isArray(bootstrapData.attorneys) && bootstrapData.attorneys.length) attorneys = bootstrapData.attorneys;
         displayStart = bootstrapData.displayStart || DEFAULT_DISPLAY_START;
         displayEnd = bootstrapData.displayEnd || DEFAULT_DISPLAY_END;
         minBookableStart = bootstrapData.minBookableStart || DEFAULT_MIN_START;
@@ -449,6 +483,7 @@
         defaultSlotDurationMinutes = bootstrapData.defaultSlotDurationMinutes || 90;
 
         document.getElementById('minStartLabel').textContent = formatTime12(minBookableStart);
+        populateAttorneySelects();
       } catch (error) {
         console.error(error);
       }
@@ -460,8 +495,8 @@
       document.getElementById('appShell').classList.remove('hidden');
 
       const isCS = mode === 'CS';
-      document.getElementById('modeSubtitle').textContent = isCS ? 'Erick Dessus · Agendar' : 'Erick Dessus · ATTY';
-      document.getElementById('boardTitle').textContent = isCS ? 'CASE REVIEW · ERICK DESSUS' : 'MIS CASE REVIEW · ERICK DESSUS';
+      document.getElementById('modeSubtitle').textContent = isCS ? 'Agendar' : 'ATTY';
+      document.getElementById('boardTitle').textContent = isCS ? 'CASE REVIEW · AGENDA' : 'CASE REVIEW · ATTY';
 
       adminMode = false;
       adminPassword = '';
@@ -606,12 +641,12 @@
       const contentHeight = Math.max(totalMinutes * PIXELS_PER_MINUTE, 360);
       const gridHeight = contentHeight + TIMELINE_TOP_PADDING + TIMELINE_BOTTOM_PADDING;
 
-      document.getElementById('timelineHeader').innerHTML = `
-        <div class="time-header"><i class="bi bi-clock me-1"></i>Hora</div>
+      document.getElementById('timelineHeader').innerHTML = `<div class="time-header"><i class="bi bi-clock me-1"></i>Hora</div>` +
+        attorneys.map(a => `
         <div class="attorney-header">
-          <div class="attorney-name"><i class="bi bi-person-circle me-1"></i>${escapeHtml(attorney.name)}</div>
-          <div class="attorney-location">${escapeHtml(attorney.location)}</div>
-        </div>`;
+          <div class="attorney-name"><i class="bi bi-person-circle me-1"></i>${escapeHtml(a.name)}</div>
+          <div class="attorney-location">${escapeHtml(a.location || '')}</div>
+        </div>`).join('');
 
       const grid = document.getElementById('timelineGrid');
       grid.style.minHeight = `${gridHeight}px`;
@@ -628,20 +663,33 @@
       }
       grid.appendChild(timeAxis);
 
-      const lane = document.createElement('div');
-      lane.className = 'attorney-lane';
-      lane.style.height = `${gridHeight}px`;
-      lane.onclick = event => handleLaneClick(event, bounds);
+      attorneys.forEach(a => {
+        const lane = document.createElement('div');
+        lane.className = 'attorney-lane';
+        lane.style.height = `${gridHeight}px`;
+        lane.dataset.attorney = a.name;
+        lane.onclick = event => handleLaneClick(event, a, bounds);
 
-      const minStartMin = timeToMinutes(minBookableStart);
-      if (bounds.start < minStartMin) {
-        lane.appendChild(outsideHoursBlock(TIMELINE_TOP_PADDING, (minStartMin - bounds.start) * PIXELS_PER_MINUTE));
-      }
+        const minStartMin = timeToMinutes(minBookableStart);
+        if (bounds.start < minStartMin) {
+          lane.appendChild(outsideHoursBlock(TIMELINE_TOP_PADDING, (minStartMin - bounds.start) * PIXELS_PER_MINUTE));
+        }
 
-      blocks.forEach(item => lane.appendChild(createBlockCard(item, bounds)));
-      appointments.slice().sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
-        .forEach(item => lane.appendChild(createEventCard(item, bounds)));
-      grid.appendChild(lane);
+        blocksForAttorney(a.name).forEach(item => lane.appendChild(createBlockCard(item, bounds)));
+        appointmentsForAttorney(a.name).forEach(item => lane.appendChild(createEventCard(item, bounds)));
+        grid.appendChild(lane);
+      });
+    }
+
+    function appointmentsForAttorney(name) {
+      const key = normalizeKey(name);
+      return appointments.filter(item => normalizeKey(item.atty) === key)
+        .sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+    }
+
+    function blocksForAttorney(name) {
+      const key = normalizeKey(name);
+      return blocks.filter(item => normalizeKey(item.atty) === 'all' || normalizeKey(item.atty) === key);
     }
 
     function outsideHoursBlock(top, height) {
@@ -700,25 +748,25 @@
       return card;
     }
 
-    function handleLaneClick(event, bounds) {
+    function handleLaneClick(event, attorneyItem, bounds) {
       if (event.target.closest('.event-card') || event.target.closest('.blocked-card')) return;
       if (adminMode) {
-        const suggestedTime = getSuggestedStartTime(event.currentTarget, event, bounds);
-        openBlockModal(suggestedTime);
+        const suggestedTime = getSuggestedStartTime(attorneyItem.name, event.currentTarget, event, bounds);
+        openBlockModal(suggestedTime, attorneyItem.name);
         return;
       }
-      openBookingModal();
+      openBookingModal(attorneyItem.name);
     }
 
-    function getSuggestedStartTime(lane, event, bounds) {
+    function getSuggestedStartTime(attyName, lane, event, bounds) {
       const rect = lane.getBoundingClientRect();
       const offsetY = Math.max(0, event.clientY - rect.top - TIMELINE_TOP_PADDING);
       const clickedMinute = Math.max(bounds.start, Math.min(bounds.end, bounds.start + offsetY / PIXELS_PER_MINUTE));
       const minStart = Math.max(timeToMinutes(minBookableStart), bounds.start);
 
       const busy = [
-        ...appointments.map(item => ({ start: timeToMinutes(item.startTime), end: timeToMinutes(item.endTime) })),
-        ...blocks.map(item => ({ start: item.type === 'FULL_DAY' ? 0 : timeToMinutes(item.startTime), end: item.type === 'FULL_DAY' ? 1440 : timeToMinutes(item.endTime) }))
+        ...appointmentsForAttorney(attyName).map(item => ({ start: timeToMinutes(item.startTime), end: timeToMinutes(item.endTime) })),
+        ...blocksForAttorney(attyName).map(item => ({ start: item.type === 'FULL_DAY' ? 0 : timeToMinutes(item.startTime), end: item.type === 'FULL_DAY' ? 1440 : timeToMinutes(item.endTime) }))
       ].filter(item => Number.isFinite(item.start) && Number.isFinite(item.end)).sort((a, b) => a.start - b.start);
 
       if (!busy.length) return minutesToTime(Math.max(minStart, clickedMinute));
@@ -778,8 +826,9 @@
       }
     }
 
-    function openBlockModal(suggestedTime = '') {
+    function openBlockModal(suggestedTime = '', attyName = 'ALL') {
       if (!adminMode) return;
+      document.getElementById('blockAtty').value = attorneys.some(a => a.name === attyName) ? attyName : 'ALL';
       document.getElementById('blockDate').value = toYMD(selectedDate);
       document.getElementById('blockType').value = 'TIME_RANGE';
       document.getElementById('blockStartTime').value = suggestedTime || minBookableStart;
@@ -798,7 +847,8 @@
       if (!adminMode || !adminPassword) return;
       const type = document.getElementById('blockType').value;
       const payload = {
-        password: adminPassword, date: document.getElementById('blockDate').value, type,
+        password: adminPassword, atty: document.getElementById('blockAtty').value,
+        date: document.getElementById('blockDate').value, type,
         startTime: type === 'FULL_DAY' ? '' : document.getElementById('blockStartTime').value,
         endTime: type === 'FULL_DAY' ? '' : document.getElementById('blockEndTime').value,
         reason: document.getElementById('blockReason').value.trim()
@@ -839,28 +889,61 @@
       } finally { showLoading(false); }
     }
 
-    async function openBookingModal() {
+    async function openBookingModal(attyName = '') {
       if (adminMode || currentMode !== 'CS') return;
-      document.getElementById('bookingClickupId').value = '';
-      document.getElementById('bookingClient').value = '';
       document.getElementById('bookingScheduledBy').value = '';
       document.getElementById('bookingDate').value = toYMD(selectedDate);
       document.getElementById('bookingMeetLink').value = '';
+      document.getElementById('bookingClientManual').value = '';
+      document.getElementById('bookingClickupIdManual').value = '';
+      setManualClientMode(false);
+      document.getElementById('bookingAtty').value = attorneys.some(a => a.name === attyName) ? attyName : attorneys[0].name;
       bookingModal.show();
-      await loadSlotsForBookingModal();
+      await Promise.all([loadPendingClientsForBooking(), loadSlotsForBookingModal()]);
+    }
+
+    async function loadPendingClientsForBooking() {
+      const select = document.getElementById('bookingClientSelect');
+      select.innerHTML = '<option value="">Cargando clientes...</option>';
+      try {
+        pendingClients = await server('getPendingCaseReviews') || [];
+      } catch (error) {
+        pendingClients = [];
+      }
+      select.innerHTML = '';
+      select.appendChild(new Option(pendingClients.length ? 'Selecciona un cliente...' : 'No hay clientes pendientes (usa agregar manualmente)', ''));
+      pendingClients.forEach((c, index) => {
+        const label = `${c.client}${c.clientId ? ' · ID ' + c.clientId : ''}${c.stage ? ' · ' + c.stage : ''}`;
+        select.appendChild(new Option(label, index));
+      });
+    }
+
+    function onBookingClientSelectChange() { /* el ID de ClickUp se toma del cliente elegido al guardar */ }
+
+    function setManualClientMode(on) {
+      manualClientMode = on;
+      document.getElementById('manualClientFields').classList.toggle('hidden', !on);
+      document.getElementById('bookingClientSelect').disabled = on;
+      document.getElementById('manualClientToggle').textContent = on ? 'Mejor elegir de la lista' : '¿No aparece? Agrégalo manualmente';
+    }
+
+    function toggleManualClient(event) {
+      event.preventDefault();
+      setManualClientMode(!manualClientMode);
     }
 
     async function loadSlotsForBookingModal() {
       const date = document.getElementById('bookingDate').value;
+      const atty = document.getElementById('bookingAtty').value;
       const select = document.getElementById('bookingSlot');
       const hint = document.getElementById('bookingSlotHint');
       select.innerHTML = '';
       select.disabled = true;
       hint.textContent = 'Cargando horarios de este día...';
-      if (!date) return;
+      if (!date || !atty) return;
 
       try {
-        bookingSlots = await server('getAvailableSlots', { date }) || [];
+        bookingSlots = await server('getAvailableSlots', { date, atty }) || [];
       } catch (error) {
         bookingSlots = [];
         hint.textContent = error.message || 'No se pudieron cargar los horarios.';
@@ -868,7 +951,7 @@
       }
 
       if (!bookingSlots.length) {
-        hint.textContent = 'No hay horarios este día (puede estar bloqueado). Pide al admin que abra un slot si es necesario.';
+        hint.textContent = `No hay horarios este día para ${atty} (fin de semana o día bloqueado). Elige otro día o pide al admin que abra un slot.`;
         return;
       }
 
@@ -883,9 +966,9 @@
       if (firstAvailableIndex >= 0) {
         select.value = firstAvailableIndex;
         select.disabled = false;
-        hint.textContent = `${bookingSlots.filter(s => s.available).length} horario(s) disponible(s) este día.`;
+        hint.textContent = `${bookingSlots.filter(s => s.available).length} horario(s) disponible(s) para ${atty} este día.`;
       } else {
-        hint.textContent = 'Todos los horarios de este día ya están ocupados.';
+        hint.textContent = `Todos los horarios de ${atty} este día ya están ocupados. Busca otro día.`;
       }
     }
 
@@ -894,22 +977,37 @@
     }
 
     async function saveBooking() {
-      const client = document.getElementById('bookingClient').value.trim();
+      let client = '', clickupId = '';
+      if (manualClientMode) {
+        client = document.getElementById('bookingClientManual').value.trim();
+        clickupId = document.getElementById('bookingClickupIdManual').value.trim();
+      } else {
+        const picked = pendingClients[document.getElementById('bookingClientSelect').value];
+        if (picked) { client = picked.client; clickupId = picked.clickupId; }
+      }
+
       const scheduledBy = document.getElementById('bookingScheduledBy').value.trim();
       const crDate = document.getElementById('bookingDate').value;
-      const slotIndex = document.getElementById('bookingSlot').value;
-      const slot = bookingSlots[slotIndex];
+      const atty = document.getElementById('bookingAtty').value;
+      const slot = bookingSlots[document.getElementById('bookingSlot').value];
 
-      if (!client || !scheduledBy || !crDate || !slot) {
-        Swal.fire('Faltan datos', 'Completa cliente, quién agenda, fecha y elige un horario disponible.', 'warning'); return;
+      if (!client || !scheduledBy || !crDate || !atty || !slot) {
+        Swal.fire('Faltan datos', 'Elige el cliente, abogado, quién agenda, fecha y un horario disponible.', 'warning'); return;
+      }
+      if (!clickupId) {
+        const confirm = await Swal.fire({
+          icon: 'warning', title: 'Sin ID de ClickUp',
+          text: 'Sin el ID de ClickUp no se actualizará la tarea en ClickUp (abogado, fechas, estado). ¿Guardar de todos modos?',
+          showCancelButton: true, confirmButtonText: 'Guardar sin ID', cancelButtonText: 'Volver'
+        });
+        if (!confirm.isConfirmed) return;
       }
       if (!slot.available) {
         Swal.fire('Horario ocupado', 'Ese horario ya tiene un Case Review. Elige otro.', 'warning'); return;
       }
 
       const payload = {
-        clickupId: document.getElementById('bookingClickupId').value.trim(),
-        client, scheduledBy, crDate,
+        clickupId, client, scheduledBy, crDate, atty,
         startTime: slot.start, endTime: slot.end,
         meetLink: document.getElementById('bookingMeetLink').value.trim()
       };
@@ -922,7 +1020,7 @@
         viewingMonth = selectedDate.getMonth(); viewingYear = selectedDate.getFullYear();
         renderDateUI(); invalidateAgendaCache([payload.crDate]);
         await loadDailyAgenda(false, true);
-        Swal.fire('Guardado', `${result.message || 'Case Review guardado'} Horario: ${formatTime12(result.startTime)}–${formatTime12(result.endTime)}.`, 'success');
+        Swal.fire('Guardado', `${result.message || 'Case Review guardado'} ${atty}: ${formatTime12(result.startTime)}–${formatTime12(result.endTime)}.`, 'success');
       } catch (error) {
         Swal.fire('Error', error.message || 'No se pudo guardar el Case Review.', 'error');
       } finally { showLoading(false); }
@@ -930,6 +1028,7 @@
 
     function openSlotModal() {
       if (!adminMode) return;
+      document.getElementById('slotAtty').value = attorneys[0].name;
       document.getElementById('slotDate').value = toYMD(selectedDate);
       document.getElementById('slotStartTime').value = minutesToTime(timeToMinutes(defaultSlotStart) + defaultSlotDurationMinutes + 15);
       document.getElementById('slotDuration').value = defaultSlotDurationMinutes;
@@ -941,6 +1040,7 @@
       if (!adminMode || !adminPassword) return;
       const payload = {
         password: adminPassword,
+        atty: document.getElementById('slotAtty').value,
         date: document.getElementById('slotDate').value,
         startTime: document.getElementById('slotStartTime').value,
         durationMinutes: document.getElementById('slotDuration').value,
@@ -966,6 +1066,7 @@
     function openOutcomeModal(item) {
       selectedClient = item; selectedOutcome = item.outcome || '';
       document.getElementById('clientDetails').innerHTML = [
+        detailBox('Abogado', item.atty || ''),
         detailBox('Horario', `${formatTime12(item.startTime)} – ${formatTime12(item.endTime)}`),
         detailBox('Quién agendó', item.scheduledBy || ''),
         detailBox('Estatus', item.status || 'PENDIENTE')
@@ -1066,6 +1167,18 @@
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     }
 
+    function normalizeKey(value) { return stripAccents(String(value || '').trim().toLowerCase()); }
+    function populateAttorneySelects() {
+      const fill = (id, withAll) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.innerHTML = withAll ? '<option value="ALL">Ambos abogados</option>' : '';
+        attorneys.forEach(a => select.appendChild(new Option(a.name, a.name)));
+      };
+      fill('bookingAtty', false);
+      fill('slotAtty', false);
+      fill('blockAtty', true);
+    }
     function stripAccents(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
     function capitalize(value) { const t = String(value || ''); return t ? t.charAt(0).toUpperCase() + t.slice(1) : ''; }
     function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
